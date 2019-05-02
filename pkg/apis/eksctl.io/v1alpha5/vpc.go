@@ -24,6 +24,8 @@ type (
 		ExtraCIDRs []*ipnet.IPNet `json:"extraCIDRs,omitempty"`
 		// for pre-defined shared node SG
 		SharedNodeSecurityGroup string `json:"sharedNodeSecurityGroup,omitempty"`
+		// +optional
+		AutoAllocatedIPv6 *bool `json:"autoAllocatedIPv6,omitempty"`
 	}
 	// ClusterSubnets holds private and public subnets
 	ClusterSubnets struct {

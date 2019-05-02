@@ -312,6 +312,7 @@ func NewClusterVPC() *ClusterVPC {
 		Network: Network{
 			CIDR: &cidr,
 		},
+		AutoAllocatedIPv6: Disabled(),
 	}
 }
 

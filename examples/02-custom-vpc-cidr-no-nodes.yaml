@@ -8,6 +8,8 @@ metadata:
   name: cluster-2
   region: eu-north-1
 
-vpc: {cidr: 10.10.0.0/16}
+vpc:
+  cidr: 10.10.0.0/16
+  autoAllocatedIPv6: true
 
 nodeGroups: []

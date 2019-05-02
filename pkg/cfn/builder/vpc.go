@@ -11,6 +11,11 @@ import (
 )
 
 func (c *ClusterResourceSet) addSubnets(refRT *gfn.Value, topology api.SubnetTopology, subnets map[string]api.Network) {
+	counter := 0
+	if topology == api.SubnetTopologyPrivate {
+		counter = len(c.spec.AvailabilityZones)
+	}
+
 	for az, subnet := range subnets {
 		alias := string(topology) + strings.ToUpper(strings.Join(strings.Split(az, "-"), ""))
 		subnet := &gfn.AWSEC2Subnet{
@@ -18,6 +23,7 @@ func (c *ClusterResourceSet) addSubnets(refRT *gfn.Value, topology api.SubnetTop
 			CidrBlock:        gfn.NewString(subnet.CIDR.String()),
 			VpcId:            c.vpc,
 		}
+
 		switch topology {
 		case api.SubnetTopologyPrivate:
 			subnet.Tags = []gfn.Tag{{
@@ -35,8 +41,27 @@ func (c *ClusterResourceSet) addSubnets(refRT *gfn.Value, topology api.SubnetTop
 			SubnetId:     refSubnet,
 			RouteTableId: refRT,
 		})
+
+		if api.IsEnabled(c.spec.VPC.AutoAllocatedIPv6) {
+			c.newResource(alias+"CIDRv6", &gfn.AWSEC2SubnetCidrBlock{
+				SubnetId:      refSubnet,
+				Ipv6CidrBlock: getCIDRv6(counter),
+			})
+		}
+
 		c.subnets[topology] = append(c.subnets[topology], refSubnet)
+		counter++
 	}
+}
+
+func getCIDRv6(n int) *gfn.Value {
+	refAutoAllocatedCIDRv6 := gfn.MakeFnSelect(0, gfn.MakeFnGetAttString("VPC.Ipv6CidrBlocks"))
+
+	refSubnetSlices := gfn.MakeFnCIDR(
+		refAutoAllocatedCIDRv6, 8, 64,
+	)
+
+	return gfn.MakeFnSelect(n, refSubnetSlices)
 }
 
 //nolint:interfacer
@@ -48,6 +73,13 @@ func (c *ClusterResourceSet) addResourcesForVPC() {
 		EnableDnsSupport:   gfn.True(),
 		EnableDnsHostnames: gfn.True(),
 	})
+
+	if api.IsEnabled(c.spec.VPC.AutoAllocatedIPv6) {
+		c.newResource("AutoAllocatedCIDRv6", &gfn.AWSEC2VPCCidrBlock{
+			VpcId:                       c.vpc,
+			AmazonProvidedIpv6CidrBlock: gfn.True(),
+		})
+	}
 
 	c.subnets = make(map[api.SubnetTopology][]*gfn.Value)
 
